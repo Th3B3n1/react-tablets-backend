@@ -23,6 +23,40 @@ app.get('/tablets', async (req, res) => {
     }
 });
 
+// Tabletek listázása lapozással, kereséssel, rendezéssel
+app.get('/pagetablets', async (req, res) => {
+    try {
+        const { page = 1, limit = 10, sortBy = 'name', order = 'asc', search = '' } = req.query;
+
+        const offset = (page - 1) * limit;
+        const sortOrder = order.toLowerCase() === 'desc' ? 'DESC' : 'ASC';
+
+        const [rows] = await db.query(
+            `SELECT * FROM tablets 
+         WHERE name LIKE ? 
+         ORDER BY ?? ${sortOrder} 
+         LIMIT ? OFFSET ?`,
+            [`%${search}%`, sortBy, parseInt(limit), parseInt(offset)]
+        );
+
+        const [countResult] = await db.query(
+            `SELECT COUNT(*) AS total FROM tablets WHERE name LIKE ?`,
+            [`%${search}%`]
+        );
+
+        res.status(200).json({
+            tablets: rows,
+            total: countResult[0].total,
+            page: parseInt(page),
+            limit: parseInt(limit),
+        });
+    } catch (error) {
+        console.error('Error fetching tablets:', error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+
 app.get('/tablet/:id', async (req, res) => {
     try {
         const tabletId = parseInt(req.params.id);
